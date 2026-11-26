@@ -1,0 +1,8 @@
+{
+  "name": "wildtrack-vr-multiplayer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebXR multiplayer wilderness hunting prototype with WebRTC proximity voice",
+  "scripts": {"start": "node server.js"},
+  "dependencies": {"ws": "^8.18.0"}
+}

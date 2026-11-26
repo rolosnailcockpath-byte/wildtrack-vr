@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>WILDTRACK VR — Multiplayer Wilderness v0.3.1</title>
+<style>
+:root{--gold:#d7b477;--panel:rgba(12,20,18,.88);--line:rgba(215,180,119,.35);--muted:#b8c0b7}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101a17;color:#f2f0e8;font-family:Inter,system-ui,Segoe UI,sans-serif}
+#game{position:fixed;inset:0}canvas{display:block}
+.panel{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);border-radius:14px;box-shadow:0 14px 50px #0008}
+#brand{position:absolute;top:18px;left:18px;padding:12px 16px;letter-spacing:.16em;font-weight:900;font-size:13px;color:#f0d7a8}#brand small{display:block;color:#aab5a8;font-weight:500;letter-spacing:.08em;margin-top:4px}
+#hud{position:absolute;top:18px;right:18px;padding:12px 15px;min-width:170px;font-size:13px;line-height:1.8}#hud b{color:var(--gold)}
+#crosshair{position:absolute;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);pointer-events:none}
+#crosshair:before,#crosshair:after{content:"";position:absolute;background:#f5e9cc;box-shadow:0 0 5px #000}#crosshair:before{width:2px;height:18px;left:8px}#crosshair:after{height:2px;width:18px;top:8px}
+#hint{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);padding:9px 14px;color:#d7dfd5;font-size:12px;white-space:nowrap}
+#menu{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 36%,#78956a35,transparent 48%),linear-gradient(120deg,#07120feF,#0a1711d9),linear-gradient(35deg,#263e2b,#0b1713)}
+#menuCard{width:min(560px,calc(100% - 28px));padding:30px;border-color:#d7b47770;box-shadow:0 24px 90px #000b,inset 0 1px #ffffff12}
+.eyebrow{font-size:10px;letter-spacing:.25em;color:var(--gold);font-weight:800}
+h1{font-size:clamp(32px,7vw,56px);line-height:.98;margin:10px 0;color:#f5f0df;letter-spacing:-.05em}
+.sub{color:#b9c5b9;line-height:1.55;font-size:14px;max-width:460px}
+.row{display:flex;gap:9px;margin-top:16px;flex-wrap:wrap}input,select,button{font:inherit;border-radius:9px;border:1px solid var(--line);padding:12px;background:#18251f;color:#f5f0df;min-height:44px}input{flex:1;min-width:130px}button{cursor:pointer;background:linear-gradient(135deg,#e0bd80,#9b7042);color:#1b1b14;border:0;font-weight:850;padding:12px 17px;box-shadow:0 5px 18px #0004;transition:transform .15s,filter .15s}button:hover{filter:brightness(1.12);transform:translateY(-1px)}button.secondary{background:#26362e;color:#e7eadd;border:1px solid #526456}button:disabled{opacity:.45;cursor:not-allowed}
+#status{font-size:12px;color:#c4cdbf;margin-top:12px;min-height:18px}
+#side{position:absolute;left:18px;bottom:18px;display:flex;gap:8px;flex-wrap:wrap}
+#side button{font-size:12px;min-height:38px;padding:8px 12px}
+#shop{position:absolute;right:18px;bottom:18px;width:min(310px,calc(100% - 36px));padding:14px;display:none}
+#shop h3{margin:0 0 8px;color:var(--gold)}.shopitem{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #ffffff18;padding:8px 0;font-size:12px}.shopitem button{padding:7px 10px;min-height:32px;font-size:11px}
+#notice{position:absolute;top:92px;left:50%;transform:translateX(-50%);padding:8px 13px;font-size:12px;opacity:0;transition:opacity .2s;pointer-events:none}
+#players{color:#c4d0c4;font-size:11px}
+@media(max-width:600px){#brand{top:10px;left:10px}#hud{top:10px;right:10px;min-width:125px;font-size:11px}#side{left:10px;bottom:10px}#hint{bottom:62px;font-size:10px}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="brand" class="panel">WILDTRACK <span style="color:#fff">/</span> VR<small>CO-OP WILDERNESS SIMULATOR</small></div>
+<div id="hud" class="panel">CREDITS <b id="money">$250</b><br>HARVEST <b id="harvest">0</b><br>LOADOUT <b id="loadout">RANGER RIFLE</b><br>AMMO <b id="ammo">12</b><br>ZONE <b id="zone">PINEWOOD</b><br><span id="players">SOLO SESSION</span></div>
+<div id="crosshair"></div>
+<div id="hint" class="panel">WASD / mouse to explore · Click to aim · Left trigger / click to fire · E to interact · G to drop bait</div>
+<div id="notice" class="panel"></div>
+<div id="side"><button class="secondary" id="mapBtn">CHANGE BIOME</button><button class="secondary" id="shopBtn">FIELD SHOP</button><button class="secondary" id="baitBtn">DROP BAIT · $10</button><button class="secondary" id="fishBtn">FISH</button></div>
+<div id="shop" class="panel"><h3>FIELD OUTFITTER</h3><div id="shopItems"></div><button class="secondary" id="closeShop" style="width:100%;margin-top:8px">CLOSE</button></div>
+<div id="menu"><div id="menuCard" class="panel">
+<div class="eyebrow">MULTIPLAYER • WEBXR • PROXIMITY VOICE</div><h1>WILDTRACK<br><span style="color:#d7b477">VR</span></h1>
+<p class="sub">Explore a living wilderness with your crew. Track wildlife, fish quiet lakes, upgrade your kit, and move through the world with arm-powered VR locomotion.</p>
+<div class="row"><input id="nickname" maxlength="18" placeholder="Hunter name" value="Trail Mole"><input id="room" maxlength="10" placeholder="Room code (e.g. PINE7)" value="PINE7"></div>
+<div class="row"><button id="join">ENTER WILDERNESS</button><button class="secondary" id="vr">ENTER VR</button></div>
+<div id="status">Create or join the same room code with friends. Microphone starts after you enter.</div>
+</div></div>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const $=id=>document.getElementById(id);
+let scene,camera,renderer,clock,worldGroup,animals=[],players=new Map(),localId='p'+Math.random().toString(36).slice(2,9);
+let socket=null,pcMap=new Map(),localStream=null,voiceNodes=new Map(),voiceContext=null,roomCode='PINE7',nick='Trail Mole',joined=false,vrMode=false;
+let money=250,harvest=0,weapon='Ranger Rifle',damage=35,ammo=12,selectedBiome='PINEWOOD',bait=[],fish=[],blood=[],remoteAvatars=new Map();
+let yaw=0,pitch=0,velocity=new THREE.Vector3(),lastPos=new THREE.Vector3(0,1.65,5),keys={},hands=[],controllers=[],lastShot=0;
+const animalDefs=[{name:'Whitetail',hp:100,speed:1.15,worth:95,color:0x92714d},{name:'Elk',hp:180,speed:.8,worth:180,color:0x765b43},{name:'Fox',hp:65,speed:1.7,worth:70,color:0xc47743},{name:'Boar',hp:140,speed:1.05,worth:130,color:0x51443a}];
+const weaponDefs=[{name:'Ranger Rifle',price:0,damage:35,ammo:12},{name:'SMG',price:350,damage:17,ammo:30},{name:'Longshot Sniper',price:650,damage:100,ammo:5},{name:'Hand Cannon',price:480,damage:65,ammo:7},{name:'Recurve Bow',price:300,damage:45,ammo:1},{name:'Crossbow',price:550,damage:80,ammo:1}];
+function say(t){$('notice').textContent=t;$('notice').style.opacity=1;clearTimeout(say.t);say.t=setTimeout(()=>$('notice').style.opacity=0,2200)}
+function furTexture(){const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');x.fillStyle='#665044';x.fillRect(0,0,256,256);for(let i=0;i<9500;i++){x.strokeStyle=`rgba(${80+Math.random()*75},${55+Math.random()*45},${40+Math.random()*35},${Math.random()*.35})`;x.lineWidth=.5;x.beginPath();let a=Math.random()*256,b=Math.random()*256;x.moveTo(a,b);x.lineTo(a+(Math.random()-.5)*5,b+Math.random()*8);x.stroke()}const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+const fur=new THREE.MeshStandardMaterial({map:furTexture(),roughness:1});
+function makeMole(){
+ const g=new THREE.Group();
+ const body=new THREE.Mesh(new THREE.SphereGeometry(.38,24,20),fur);body.scale.set(.85,1.1,1.15);body.position.y=.8;g.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.29,24,20),fur);head.scale.set(1.1,.92,1);head.position.set(0,1.2,.28);g.add(head);
+ const snout=new THREE.Mesh(new THREE.SphereGeometry(.115,20,16),new THREE.MeshStandardMaterial({color:0xb86c70,roughness:.5}));snout.scale.set(.85,.65,1);snout.position.set(0,1.13,.55);g.add(snout);
+ const eyeMat=new THREE.MeshStandardMaterial({color:0x090b0b,roughness:.12,metalness:.2});
+ for(const s of [-1,1]){let eye=new THREE.Mesh(new THREE.SphereGeometry(.035,12,10),eyeMat);eye.position.set(s*.17,1.29,.49);g.add(eye);
+ let ear=new THREE.Mesh(new THREE.SphereGeometry(.09,14,12),fur);ear.scale.set(1,.7,.35);ear.position.set(s*.25,1.4,.22);g.add(ear);
+ let arm=new THREE.Mesh(new THREE.CapsuleGeometry(.085,.36,5,10),fur);arm.position.set(s*.38,.88,.13);arm.rotation.z=s*.55;g.add(arm);
+ let paw=new THREE.Mesh(new THREE.SphereGeometry(.12,14,12),fur);paw.scale.set(1,.6,1.2);paw.position.set(s*.48,.65,.28);g.add(paw);
+ for(let j=-1;j<=1;j++){let claw=new THREE.Mesh(new THREE.ConeGeometry(.018,.1,8),new THREE.MeshStandardMaterial({color:0xc9bda5}));claw.position.set(s*.48+j*.045,.62,.39);claw.rotation.x=Math.PI/2;g.add(claw)}
+ let leg=new THREE.Mesh(new THREE.CapsuleGeometry(.09,.22,4,8),fur);leg.position.set(s*.18,.35,-.04);g.add(leg)}
+ const tail=new THREE.Mesh(new THREE.CapsuleGeometry(.045,.28,4,8),fur);tail.position.set(0,.72,-.43);tail.rotation.x=1.1;g.add(tail);
+ return g;
+}
+function init(){
+ scene=new THREE.Scene();scene.background=new THREE.Color(0x9bb2a0);scene.fog=new THREE.FogExp2(0x9bb2a0,.012);
+ camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.05,450);camera.position.set(0,1.65,5);
+ renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.7));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.xr.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.1;$('game').appendChild(renderer.domElement);
+ scene.add(new THREE.HemisphereLight(0xdce8e2,0x46523b,2));let sun=new THREE.DirectionalLight(0xffe3b2,2.2);sun.position.set(-35,55,20);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);scene.add(sun);
+ clock=new THREE.Clock();buildBiome('PINEWOOD');makeLocalMole();setupInput();renderer.setAnimationLoop(tick);addEventListener('resize',resize);
+}
+function makeSurfaceMap(hex,seed=1){
+ const c=document.createElement('canvas');c.width=c.height=512;const ctx=c.getContext('2d');
+ const col=new THREE.Color(hex);ctx.fillStyle='#'+col.getHexString();ctx.fillRect(0,0,512,512);
+ let state=seed>>>0;const rand=()=>{state=(state*1664525+1013904223)>>>0;return state/4294967296};
+ for(let i=0;i<18000;i++){const x=rand()*512,y=rand()*512,r=.3+rand()*2.2,a=.025+rand()*.12;ctx.fillStyle=rand()>.5?`rgba(235,230,205,${a})`:`rgba(12,18,12,${a})`;ctx.beginPath();ctx.ellipse(x,y,r,r*(.45+rand()),rand()*Math.PI,0,Math.PI*2);ctx.fill()}
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(7,7);tex.anisotropy=8;return tex;
+}
+function groundMat(color,textured=false){const opts={color:textured?0xffffff:color,roughness:.96};if(textured){opts.map=makeSurfaceMap(color,color);opts.bumpMap=opts.map;opts.bumpScale=.12}return new THREE.MeshStandardMaterial(opts)}
+function buildBiome(biome){
+ selectedBiome=biome;$('zone').textContent=biome; if(worldGroup)scene.remove(worldGroup);worldGroup=new THREE.Group();scene.add(worldGroup);animals=[];bait=[];fish=[];
+ let colors={PINEWOOD:0x40583d,SNOW:0xd8e1e0,LAKESHORE:0x667c55,HIGHLANDS:0x68765a};let base=colors[biome]||0x40583d;
+ let ground=new THREE.Mesh(new THREE.PlaneGeometry(260,260,110,110),groundMat(base,true));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;
+ const pos=ground.geometry.attributes.position;for(let i=0;i<pos.count;i++){let x=pos.getX(i),y=pos.getY(i);let h=(Math.sin(x*.055)*Math.cos(y*.045)*2.1+Math.sin(x*.12+y*.09)*.55);if(biome==='HIGHLANDS')h+=Math.abs(Math.sin(x*.018)*Math.cos(y*.025))*8;if(biome==='SNOW')h+=Math.abs(Math.sin(x*.02)*Math.cos(y*.02))*4;pos.setZ(i,h)}ground.geometry.computeVertexNormals();worldGroup.add(ground);
+ const treeMat=new THREE.MeshStandardMaterial({color:biome==='SNOW'?0x435248:0x344b35,roughness:1}),trunkMat=groundMat(0x574435,true);
+ for(let i=0;i<115;i++){let x=(Math.random()-.5)*190,z=(Math.random()-.5)*190;if(Math.abs(x)<8&&Math.abs(z)<8)continue;let h=5+Math.random()*7;
+ let trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.42,h*.55,9),trunkMat);trunk.position.set(x,h*.275,z);trunk.castShadow=true;worldGroup.add(trunk);
+ for(let j=0;j<3;j++){let crown=new THREE.Mesh(new THREE.ConeGeometry(2.1-j*.35,4.2,9),treeMat);crown.position.set(x,h*.48+j*1.45,z);crown.castShadow=true;worldGroup.add(crown)}}
+ const rockMat=groundMat(biome==='SNOW'?0x899394:0x777b6d,true);
+ for(let i=0;i<85;i++){let x=(Math.random()-.5)*210,z=(Math.random()-.5)*210;let rock=new THREE.Mesh(new THREE.DodecahedronGeometry(.5+Math.random()*1.5,1),rockMat);rock.position.set(x,.45,z);rock.scale.y=.6+Math.random();rock.rotation.set(Math.random(),Math.random(),Math.random());rock.castShadow=true;worldGroup.add(rock)}
+ // Layered grass tufts
+ const grassMat=new THREE.MeshStandardMaterial({color:biome==='SNOW'?0x9aa99e:0x718b4f,roughness:1,side:THREE.DoubleSide});
+ for(let i=0;i<900;i++){let x=(Math.random()-.5)*220,z=(Math.random()-.5)*220;let blade=new THREE.Mesh(new THREE.ConeGeometry(.035,.35+Math.random()*.35,3),grassMat);blade.position.set(x,.15,z);blade.rotation.z=(Math.random()-.5)*.4;worldGroup.add(blade)}
+ if(biome==='LAKESHORE'){let water=new THREE.Mesh(new THREE.CircleGeometry(22,64),new THREE.MeshPhysicalMaterial({color:0x367f91,roughness:.16,metalness:.1,transparent:true,opacity:.88,clearcoat:1}));water.rotation.x=-Math.PI/2;water.position.set(18,.06,-15);worldGroup.add(water);for(let i=0;i<22;i++){let ripple=new THREE.Mesh(new THREE.TorusGeometry(1+Math.random()*3,.018,5,40),new THREE.MeshBasicMaterial({color:0xb9e5e5,transparent:true,opacity:.4}));ripple.rotation.x=Math.PI/2;ripple.position.set(18,.12,-15);worldGroup.add(ripple)}}
+ scene.fog.color.set(biome==='SNOW'?0xb8cbd0:biome==='LAKESHORE'?0x9ab7b5:0x9bb2a0);
+ scene.background=scene.fog.color;
+ spawnAnimals();
+}
+function makeAnimal(def,x,z){
+ let group=new THREE.Group(),mat=new THREE.MeshStandardMaterial({map:fur.map,color:def.color,roughness:1});
+ let torso=new THREE.Mesh(new THREE.SphereGeometry(.62,20,16),mat);torso.scale.set(.8,.8,1.35);torso.position.y=.95;group.add(torso);
+ let head=new THREE.Mesh(new THREE.SphereGeometry(.32,18,14),mat);head.position.set(0,1.2,.95);group.add(head);
+ let nose=new THREE.Mesh(new THREE.SphereGeometry(.09,12,8),groundMat(0x292522));nose.position.set(0,1.13,1.24);group.add(nose);
+ for(let s of [-1,1]){let leg=new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,.6,9),mat);leg.position.set(s*.3,.35,.3);group.add(leg);let leg2=leg.clone();leg2.position.z=-.55;group.add(leg2)}
+ group.position.set(x,0,z);group.userData={...def,hp:def.hp,maxHp:def.hp,alive:true,dir:new THREE.Vector3(Math.random()-.5,0,Math.random()-.5).normalize(),fear:0,bleed:0};worldGroup.add(group);animals.push(group);
+}
+function spawnAnimals(){for(let i=0;i<18;i++){let d=animalDefs[Math.floor(Math.random()*animalDefs.length)];makeAnimal(d,(Math.random()-.5)*100,(Math.random()-.5)*100)}}
+let localMole,remoteMole;
+function makeLocalMole(){localMole=makeMole();scene.add(localMole);localMole.visible=false}
+function setupInput(){
+ addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyE')interact();if(e.code==='KeyG')dropBait();if(e.code==='KeyF')fishAction();if(e.code==='KeyR'){ammo=weaponDefs.find(w=>w.name===weapon)?.ammo||12;$('ammo').textContent=ammo;say('Reloaded')}if(e.code==='Digit1')weapon='Ranger Rifle'});
+ addEventListener('keyup',e=>keys[e.code]=false);
+ renderer.domElement.addEventListener('click',()=>{if(joined&&!vrMode)renderer.domElement.requestPointerLock?.()});
+ addEventListener('mousemove',e=>{if(document.pointerLockElement===renderer.domElement){yaw-=e.movementX*.002;pitch=Math.max(-1.25,Math.min(1.25,pitch-e.movementY*.002))}});
+ addEventListener('mousedown',e=>{if(e.button===0&&joined&&!vrMode)shoot()});
+ $('join').onclick=()=>joinGame(false);$('vr').onclick=()=>enterVR();
+ $('mapBtn').onclick=()=>{let maps=['PINEWOOD','SNOW','LAKESHORE','HIGHLANDS'];let next=maps[(maps.indexOf(selectedBiome)+1)%maps.length];buildBiome(next);say('Travelled to '+next)};
+ $('shopBtn').onclick=()=>{$('shop').style.display='block';renderShop()};$('closeShop').onclick=()=>$('shop').style.display='none';
+ $('baitBtn').onclick=dropBait;$('fishBtn').onclick=fishAction;
+}
+async function joinGame(){
+ if(joined)return;
+ nick=$('nickname').value.trim()||'Trail Mole';roomCode=($('room').value.trim()||'PINE7').toUpperCase();joined=true;
+ $('menu').style.display='none';connectSocket();startVoice();
+ say('Welcome to the wilderness, '+nick);
+}
+function connectSocket(){
+ const proto=location.protocol==='https:'?'wss':'ws';let url=(location.protocol==='file:'?'ws://localhost:8080':proto+'://'+location.host);
+ try{socket=new WebSocket(url);socket.onopen=()=>{socket.send(JSON.stringify({type:'join',id:localId,name:nick,room:roomCode}));say('Connected · room '+roomCode)};
+ socket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}handleNet(m)};
+ socket.onclose=()=>{$('players').textContent='OFFLINE · SOLO';say('Multiplayer server disconnected')};socket.onerror=()=>say('Could not reach multiplayer server');}
+ catch(e){say('Multiplayer connection unavailable')}
+}
+function handleNet(m){
+ if(m.type==='snapshot'){for(const p of m.players||[])if(p.id!==localId){upsertRemote(p);if(localStream)createPeer(p.id,localId.localeCompare(p.id)<0)}$('players').textContent=(m.players.length+1)+' IN ROOM';}
+ if(m.type==='player'){if(m.id!==localId){upsertRemote(m);if(localStream)createPeer(m.id,localId.localeCompare(m.id)<0)}}
+ if(m.type==='leave'){let a=remoteAvatars.get(m.id);if(a){scene.remove(a.mesh);remoteAvatars.delete(m.id)}let pc=pcMap.get(m.id);if(pc)pc.close();pcMap.delete(m.id);voiceNodes.delete(m.id)}
+ if(m.type==='signal')handleSignal(m);
+ if(m.type==='event'&&m.event==='harvest')say(m.name+' found a harvest');
+}
+function upsertRemote(p){let a=remoteAvatars.get(p.id);if(!a){let mesh=makeMole();scene.add(mesh);a={mesh};remoteAvatars.set(p.id,a)}a.mesh.position.set(p.x||0,p.y||0,p.z||0);a.mesh.rotation.y=p.yaw||0}
+function sendState(){if(socket?.readyState===1)socket.send(JSON.stringify({type:'state',id:localId,name:nick,room:roomCode,x:camera.position.x,y:camera.position.y-1.1,z:camera.position.z,yaw}))}
+async function startVoice(){
+ try{localStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});say('Microphone live · proximity voice enabled');}
+ catch(e){say('Mic permission denied · game chat text-free, voice unavailable');return}
+ // Mesh peer connections are created when players announce presence; signaling is relayed by the room server.
+ for(const id of remoteAvatars.keys())createPeer(id,localId.localeCompare(id)<0);
+}
+function createPeer(id,initiator){
+ if(!localStream||pcMap.has(id))return;let pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});pcMap.set(id,pc);
+ localStream.getTracks().forEach(t=>pc.addTrack(t,localStream));
+ pc.ontrack=e=>{
+   if(voiceNodes.has(id))return;
+   try{voiceContext=voiceContext||new AudioContext();
+    const source=voiceContext.createMediaStreamSource(e.streams[0]);
+    const gain=voiceContext.createGain();gain.gain.value=0;
+    const panner=voiceContext.createStereoPanner();source.connect(gain).connect(panner).connect(voiceContext.destination);
+    voiceNodes.set(id,{gain,panner,stream:e.streams[0]});
+    voiceContext.resume().catch(()=>{});
+   }catch(err){console.warn('Spatial voice setup failed',err)}
+  };
+  pc.onconnectionstatechange=()=>{if(['failed','closed','disconnected'].includes(pc.connectionState)){pc.close();pcMap.delete(id);voiceNodes.delete(id)}};
+ pc.onicecandidate=e=>{if(e.candidate)signal(id,{candidate:e.candidate})};
+ if(initiator)pc.createOffer().then(o=>pc.setLocalDescription(o)).then(()=>signal(id,{description:pc.localDescription}));
+}
+function signal(to,data){if(socket?.readyState===1)socket.send(JSON.stringify({type:'signal',to,data}))}
+async function handleSignal(m){
+ let pc=pcMap.get(m.from);if(!pc)createPeer(m.from,false),pc=pcMap.get(m.from);if(!pc)return;
+ try{if(m.data.description){await pc.setRemoteDescription(m.data.description);if(m.data.description.type==='offer'){let a=await pc.createAnswer();await pc.setLocalDescription(a);signal(m.from,{description:pc.localDescription})}}if(m.data.candidate)await pc.addIceCandidate(m.data.candidate)}catch(e){console.warn(e)}
+}
+async function enterVR(){
+ if(joined&&vrMode)return;
+ if(!window.isSecureContext){$('status').textContent='VR needs an HTTPS game link (localhost is okay). Open the hosted game directly in Meta Quest Browser.';return}
+ if(!navigator.xr){$('status').textContent='WebXR is unavailable here. Open this HTTPS page directly in Meta Quest Browser while wearing the headset.';return}
+ let sessionPromise;
+ try{
+  // Start requestSession synchronously in the click handler. Do not await support checks
+  // or microphone permission first: browsers require the original user activation.
+  renderer.xr.setReferenceSpaceType('local-floor');
+  sessionPromise=navigator.xr.requestSession('immersive-vr',{optionalFeatures:['local-floor','bounded-floor','hand-tracking']});
+ }catch(e){$('status').textContent='Quest could not start VR: '+(e.message||e);return}
+ $('vr').disabled=true;$('status').textContent='Requesting Quest VR session…';
+ try{
+  const session=await sessionPromise;
+  await renderer.xr.setSession(session);
+  vrMode=true;
+  controllers=[renderer.xr.getController(0),renderer.xr.getController(1)];
+  controllers.forEach((c,i)=>{scene.add(c);let g=new THREE.Mesh(new THREE.SphereGeometry(.075,16,12),new THREE.MeshStandardMaterial({color:i?0xc69b5c:0xe0d0aa,roughness:.45}));c.add(g);c.userData.prev=new THREE.Vector3();c.addEventListener('selectstart',()=>shoot(c));c.addEventListener('squeezestart',()=>interact())});
+  session.addEventListener('end',()=>{vrMode=false;controllers.forEach(c=>scene.remove(c));controllers=[];$('menu').style.display=joined?'none':'grid';$('vr').disabled=false});
+  if(!joined)joinGame();
+  $('hint').textContent='Push against the world with your hands to move · Trigger to fire · Grip to interact';
+  $('status').textContent='VR connected. Welcome to the wilderness.';
+ }catch(e){
+  vrMode=false;$('vr').disabled=false;
+  const n=e&&e.name||'VR error';
+  $('status').textContent=n==='NotAllowedError'||n==='SecurityError'?'Quest blocked the VR request. Open this game directly in Meta Quest Browser (not an embedded preview), allow VR/motion access, and try again.':('Could not start VR ('+n+'): '+(e.message||'Check Quest browser permissions.'));
+ }
+}
+function shoot(controller=null){
+ let now=performance.now();if(now-lastShot<220)return;lastShot=now;if(ammo<=0){say('Reload: press R');return}ammo--;if($('ammo'))$('ammo').textContent=ammo;
+ let origin=camera.position.clone(),dir=new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion);if(controller){origin=new THREE.Vector3();controller.getWorldPosition(origin);dir=new THREE.Vector3(0,0,-1).applyQuaternion(controller.getWorldQuaternion(new THREE.Quaternion()))}let ray=new THREE.Raycaster(origin,dir,0,90);
+ let targets=ray.intersectObjects(animals.filter(a=>a.userData.alive),true);
+ if(targets.length){let hit=targets[0].object;let a=hit;while(a.parent&& !a.userData.alive)a=a.parent;let u=a.userData;u.hp-=damage;u.fear=1;u.bleed=Math.max(u.bleed,8);let mark=new THREE.Mesh(new THREE.SphereGeometry(.055,8,8),new THREE.MeshBasicMaterial({color:0x641d17}));mark.position.copy(targets[0].point);mark.position.addScaledVector(targets[0].face?.normal||new THREE.Vector3(0,1,0),.025);worldGroup.add(mark);blood.push({mesh:mark,life:22});if(u.hp<=0){u.alive=false;money+=u.worth;harvest++;$('money').textContent='$'+money;$('harvest').textContent=harvest;say(u.name+' harvested · +$'+u.worth);a.scale.set(.01,.01,.01);setTimeout(()=>{worldGroup.remove(a);animals.splice(animals.indexOf(a),1);let d=animalDefs[Math.floor(Math.random()*animalDefs.length)];makeAnimal(d,(Math.random()-.5)*90,(Math.random()-.5)*90)},5000)}else say('Hit confirmed · follow the blood trail')}
+ else say('Shot fired · no target hit');
+}
+function dropBait(){if(money<10){say('Need $10 for bait');return}money-=10;$('money').textContent='$'+money;let p=camera.position.clone().add(new THREE.Vector3(0,0,-2).applyQuaternion(camera.quaternion));let mesh=new THREE.Mesh(new THREE.SphereGeometry(.13,14,12),new THREE.MeshStandardMaterial({color:0x9c7041,roughness:1}));mesh.position.set(p.x,.2,p.z);worldGroup.add(mesh);bait.push({mesh,life:40});say('Scent bait placed · wildlife may investigate')}
+function fishAction(){if(selectedBiome!=='LAKESHORE'){say('Travel to LAKESHORE to fish');return}if(Math.random()>.35){money+=25;$('money').textContent='$'+money;say('Caught a lake trout · sold for $25')}else say('A fish nibbled, but got away')}
+function interact(){if($('shop').style.display==='block'){$('shop').style.display='none';return}say('No nearby interaction · use the field shop')}
+function renderShop(){$('shopItems').innerHTML='';weaponDefs.forEach(w=>{let row=document.createElement('div');row.className='shopitem';let owned=w.price===0||weapon===w.name;row.innerHTML='<span>'+w.name+'<br><small style="color:#aeb9ad">$'+w.price+' · '+w.damage+' dmg</small></span>';let b=document.createElement('button');b.textContent=owned?(weapon===w.name?'EQUIPPED':'EQUIP'):'BUY';b.onclick=()=>{if(!owned&&money<w.price){say('Not enough credits');return}if(!owned){money-=w.price;$('money').textContent='$'+money}weapon=w.name;damage=w.damage;ammo=w.ammo;$('ammo').textContent=ammo;$('loadout').textContent=weapon.toUpperCase();renderShop();say(w.name+' equipped')};row.appendChild(b);$('shopItems').appendChild(row)})}
+function updateWildlife(dt){
+ for(let a of animals){let u=a.userData;if(!u.alive)continue;let nearestBait=bait.find(b=>b.mesh.position.distanceTo(a.position)<18);if(nearestBait){u.dir.subVectors(nearestBait.mesh.position,a.position).normalize();u.fear=Math.max(0,u.fear-dt*.5)}else if(u.fear>0){u.fear-=dt*.2;u.dir.x+=(Math.random()-.5)*dt;u.dir.z+=(Math.random()-.5)*dt;u.dir.normalize()}else if(Math.random()<dt*.2){u.dir.set(Math.random()-.5,0,Math.random()-.5).normalize()}
+ let speed=u.speed*(u.fear>0?2.6:1);a.position.addScaledVector(u.dir,dt*speed);a.rotation.y=Math.atan2(u.dir.x,u.dir.z);if(Math.abs(a.position.x)>105||Math.abs(a.position.z)>105)u.dir.negate();
+ if(u.bleed>0){u.bleed-=dt; if(Math.random()<dt*1.6){let m=new THREE.Mesh(new THREE.SphereGeometry(.035,7,6),new THREE.MeshBasicMaterial({color:0x5b1715}));m.position.copy(a.position).add(new THREE.Vector3((Math.random()-.5)*.4,.04,(Math.random()-.5)*.4));worldGroup.add(m);blood.push({mesh:m,life:45})}if(u.bleed<=0&&u.hp<u.maxHp){u.hp=0;u.alive=false;money+=u.worth;harvest++;$('money').textContent='$'+money;$('harvest').textContent=harvest;say('Tracked '+u.name+' · +$'+u.worth);setTimeout(()=>{worldGroup.remove(a);animals.splice(animals.indexOf(a),1)},3000)}}
+ }
+ for(let b of bait){b.life-=dt;if(b.life<=0){worldGroup.remove(b.mesh);bait.splice(bait.indexOf(b),1)}}
+ for(let b of blood){b.life-=dt;if(b.life<=0){worldGroup.remove(b.mesh);blood.splice(blood.indexOf(b),1)}}
+}
+function movePlayer(dt){
+ const forward=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+ let move=new THREE.Vector3();if(keys.KeyW||keys.ArrowUp)move.add(forward);if(keys.KeyS||keys.ArrowDown)move.sub(forward);if(keys.KeyD||keys.ArrowRight)move.add(right);if(keys.KeyA||keys.ArrowLeft)move.sub(right);if(move.lengthSq())move.normalize();
+ if(!vrMode){velocity.x+=(move.x*5-velocity.x)*Math.min(1,dt*8);velocity.z+=(move.z*5-velocity.z)*Math.min(1,dt*8);camera.position.addScaledVector(velocity,dt);camera.position.y=1.65;camera.rotation.order='YXZ';camera.rotation.set(pitch,yaw,0)}
+ else {
+  // Arm-powered locomotion: controller hand displacement pushes the player in the opposite direction.
+  let push=new THREE.Vector3();controllers.forEach(c=>{let p=new THREE.Vector3();c.getWorldPosition(p);if(c.userData.prev.lengthSq()>0){let delta=p.sub(c.userData.prev);if(delta.length()<.22)push.add(delta)}c.userData.prev.copy(new THREE.Vector3().setFromMatrixPosition(c.matrixWorld))});
+  if(push.lengthSq()){camera.position.addScaledVector(push,-2.5);velocity.addScaledVector(push,-1.8)}
+  velocity.y-=9.8*dt;camera.position.addScaledVector(velocity,dt);if(camera.position.y<1.65){camera.position.y=1.65;velocity.y=0}velocity.x*=.985;velocity.z*=.985;
+ }
+ camera.position.x=THREE.MathUtils.clamp(camera.position.x,-120,120);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-120,120);
+ if(localMole){localMole.position.set(camera.position.x,camera.position.y-1.55,camera.position.z);localMole.rotation.y=yaw}
+}
+function updateProximityVoice(){
+ if(!voiceContext)return;
+ for(const [id,node] of voiceNodes){const avatar=remoteAvatars.get(id);if(!avatar){node.gain.gain.setTargetAtTime(0,voiceContext.currentTime,.08);continue;}
+  const d=camera.position.distanceTo(avatar.mesh.position.clone().add(new THREE.Vector3(0,1.1,0)));
+  // Full volume nearby, smooth fade, effectively silent beyond 24 metres.
+  const volume=THREE.MathUtils.clamp(1-(d-2)/22,0,1);
+  node.gain.gain.setTargetAtTime(volume,voiceContext.currentTime,.12);
+  node.panner.pan.setTargetAtTime(THREE.MathUtils.clamp((avatar.mesh.position.x-camera.position.x)/12,-1,1),voiceContext.currentTime,.12);
+ }
+}
+function tick(){
+ let dt=Math.min(clock.getDelta(),.04);if(joined){movePlayer(dt);updateWildlife(dt);sendState();updateProximityVoice();}renderer.render(scene,camera);
+}
+function resize(){camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)}
+addEventListener('error',e=>{const st=$('status');if(st)st.textContent='Game error: '+(e.message||'unknown error')});
+addEventListener('unhandledrejection',e=>{const st=$('status');if(st)st.textContent='Startup error: '+(e.reason&&e.reason.message||String(e.reason))});
+try{init()}catch(e){console.error(e);$('status').textContent='The game could not initialize: '+(e.message||e)}
+</script>
+</body></html>
